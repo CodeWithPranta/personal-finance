@@ -1,58 +1,124 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Personal Income & Expense Management System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A full-stack personal finance tracker built to master **Laravel REST API core concepts** alongside a lightweight **AlpineJS** frontend. This project focuses on real, production-style API authentication (Sanctum bearer tokens) rather than session-based shortcuts — the goal is to genuinely understand how token-based auth, validation, and per-user data isolation work under the hood.
 
-## About Laravel
+## Why this project exists
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+After getting used to "vibe coding," it's easy to lose the habit of writing code confidently and understanding *why* it works. Many newcomers don't even know the basic concepts but rely entirely on AI agents to generate projects — a gap that could become a real drawback down the line. This project is a deliberate exercise in rebuilding that core knowledge: authentication flows, validation, HTTP responses, and clean API design, built by hand and understood step by step.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Layer | Technology |
+|---|---|
+| Backend Framework | Laravel 13 |
+| API Authentication | Laravel Sanctum (Bearer Tokens) |
+| Frontend | AlpineJS |
+| HTTP Communication | Native `fetch()` |
+| Database | MySQL / SQLite (configurable) |
 
-## Learning Laravel
+## Core Features
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Authentication
+- API-based user registration
+- Email verification required before login
+- Login blocked until the user's email is verified
+- Sanctum bearer token issued on successful login
+- Logout (token revocation)
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Finance Management
+- Full CRUD for **Income** and **Expense** entries
+- **Categories** for organizing transactions
+- **Dashboard** with income/expense totals and summary stats
+- Strict **per-user data isolation** — users can only ever see and manage their own records
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+### API Design Principles
+- Proper HTTP status codes and consistent JSON response structure
+- Request validation on every endpoint (with meaningful error messages)
+- No financial data is accessible without a valid, verified, authenticated token
+- Guests are fully locked out of all finance-related endpoints
 
-## Agentic Development
+## Authentication Flow
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+This project intentionally uses **Sanctum bearer tokens** instead of cookie/session auth, to practice genuine stateless API authentication as used in real SPA/mobile-backed systems.
 
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+1. POST /api/register        → creates user, sends verification email
+2. User clicks verification link (verified_at is set)
+3. POST /api/login           → rejected if email not verified
+                              → returns Sanctum bearer token if verified
+4. Authorization: Bearer <token>  → required on all protected routes
+5. POST /api/logout          → revokes the current token
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+The AlpineJS frontend stores the token client-side and attaches it to every `fetch()` request via the `Authorization` header — no server-side sessions involved.
 
-## Contributing
+## API Endpoints (overview)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| POST | `/api/register` | Register a new user | No |
+| GET | `/api/email/verify/{id}/{hash}` | Verify email address | Signed URL |
+| POST | `/api/login` | Login (verified users only) | No |
+| POST | `/api/logout` | Revoke current token | Yes |
+| GET | `/api/dashboard` | Get income/expense totals | Yes |
+| GET/POST | `/api/incomes` | List / create income entries | Yes |
+| PUT/DELETE | `/api/incomes/{id}` | Update / delete an income entry | Yes |
+| GET/POST | `/api/expenses` | List / create expense entries | Yes |
+| PUT/DELETE | `/api/expenses/{id}` | Update / delete an expense entry | Yes |
+| GET/POST | `/api/categories` | List / create categories | Yes |
+| PUT/DELETE | `/api/categories/{id}` | Update / delete a category | Yes |
 
-## Code of Conduct
+> Full request/response examples will be documented as each module is completed.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Data Isolation & Security
 
-## Security Vulnerabilities
+- Every finance-related query is scoped to `auth()->id()` — no user can ever read or modify another user's data.
+- All protected routes are wrapped in `auth:sanctum` middleware.
+- Email verification is enforced via Laravel's `verified` middleware before login is permitted.
+- Input is validated using Form Request classes with explicit rules and custom error messages.
+- API responses follow consistent JSON structures with appropriate HTTP status codes (`200`, `201`, `401`, `403`, `404`, `422`, etc.).
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Project Structure (planned)
+
+```
+app/
+ ├── Http/
+ │   ├── Controllers/Api/     # Auth, Income, Expense, Category, Dashboard controllers
+ │   ├── Requests/            # Form Request validation classes
+ │   └── Resources/           # API Resource classes for consistent JSON output
+ ├── Models/                  # User, Income, Expense, Category
+resources/
+ └── views/                   # AlpineJS-powered frontend (Blade + Alpine components)
+routes/
+ └── api.php                  # All API routes
+```
+
+## Getting Started
+
+```bash
+git clone <repo-url>
+cd personal-finance
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+Configure your mail driver in `.env` for email verification to work (e.g. Mailtrap for local development).
+
+## Roadmap
+
+- [ ] User registration + email verification
+- [ ] Sanctum login/logout flow
+- [ ] Category CRUD
+- [ ] Income CRUD
+- [ ] Expense CRUD
+- [ ] Dashboard totals endpoint
+- [ ] AlpineJS frontend wiring
+- [ ] API documentation (request/response examples)
+- [ ] Tests (feature tests for auth + CRUD)
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This is a personal learning project. Feel free to fork and learn from it.
